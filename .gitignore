@@ -5,3 +5,4 @@
 *.sh
 config.json
 playerStats.json
+node_modules/xmlhttprequest/

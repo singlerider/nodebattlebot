@@ -5,10 +5,11 @@ var irc = require("irc"),
   util = require('util'),
   config = require("./config.json"),
   XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
-//Get Stored Data
 
+//Get Stored Data
 var playerStats = JSON.parse(fs.readFileSync('./playerStats.json', 'utf8'));
 
+// Get these from config file to hide values from git repo
 var settings = {
   channels: config["channels"],
   server: "irc.twitch.tv",
@@ -18,13 +19,15 @@ var settings = {
   admins: config["admins"], //admins that can control the bot
 };
 
-var usersUrl = "http://tmi.twitch.tv/group/user/nano_machina/chatters";
+// Endpoint to hit to find logged in users to bot chatroom
+var usersUrl = "http://tmi.twitch.tv/group/user/" +
+  settings.botName + "/chatters";
 
-// add a channel to playerStats obj if not exists
+// Add a channel to playerStats obj if not exists
 for (i = 0; i < config.channels.length; i++) {
   if (!(config.channels[i] in playerStats)) {
     playerStats[config.channels[i]] = {};
-    fs.writeFileSync('./playerstats.json', JSON.stringify(playerStats));
+    fs.writeFileSync('./playerStats.json', JSON.stringify(playerStats));
   }
   console.log(config.channels[i]);
 }
@@ -32,7 +35,7 @@ for (i = 0; i < config.channels.length; i++) {
 console.log("*** Bot Started ***");
 var startTime = new Date();
 
-//Create viewer counters for each channel
+// Create viewer counters for each channel. Mostly unnecessary
 for (var i = 0; i < settings.channels.length; i++) {
   var chanObj = settings.channels[i].substr(1);
   settings[chanObj] = {};
@@ -50,20 +53,19 @@ var bot = new irc.Client(settings.server, settings.botName, {
   username: settings.botName
 });
 
-// Listen for joins
+// Listen for channel joins over IRC protocol
 bot.addListener("join", function(channel, who) {
   settings[channel.substr(1)].viewers++;
   if (settings[channel.substr(1)].viewers >= 8) {
     console.log(channel.substr(1) + ' viewers = ' + settings[channel.substr(1)].viewers);
     if (!settings[channel.substr(1)].adminMsg) {
       console.log('starting interval for adminMsg');
-      settings[channel.substr(1)].adminMsg = setInterval(function() {
-      }, 600000);
+      settings[channel.substr(1)].adminMsg = setInterval(function() {}, 600000);
     }
   }
 });
 
-// Listen for any message, say to him/her in the room
+// Listen for any message, say to him/her in the room. "PRIVMSG" over IRC
 bot.addListener("message", function(from, to, text, message) {
   if (text === "cookie") {
     bot.say(to, "Great! You jump off bridges when bots tell you to as well?");
@@ -72,7 +74,7 @@ bot.addListener("message", function(from, to, text, message) {
   textScan(text, to, from);
 });
 
-//Handle on connect event
+// Handle on server connect event over IRC
 bot.addListener("connect", function() {
   console.log("*** Bot Connected ***");
   bot.say(settings.channels[0], "Let's fight!");
@@ -82,6 +84,7 @@ bot.addListener("connect", function() {
   }
 });
 
+// Listen for channel part (leaving a channel) over IRC protocol
 bot.addListener("part", function(channel, nick, reason, message) {
   settings[channel.substr(1)].viewers--;
   if (settings[channel.substr(1)].viewers < 0) {
@@ -108,8 +111,8 @@ bot.addListener("quit", function(nick, reason, channels, message) {
   console.log(channel.substr(1) + " viewers = " + settings[channel.substr(1)].viewers);
 });
 
+// Pseudo command-parser
 function textScan(text, channel, from) {
-  var nameCheck;
   var nameCheck = text.toLowerCase().split(" ");
   console.log(nameCheck);
   if (nameCheck[0] == "battle") {
@@ -137,6 +140,7 @@ function textScan(text, channel, from) {
   }
 }
 
+// Get a random key from object
 function pickRandomProperty(obj) {
   var result;
   var count = 0;
@@ -146,13 +150,15 @@ function pickRandomProperty(obj) {
   return result;
 }
 
+// Reset the entire application, including data
 function reset(channel) {
   var resetText = {};
   resetText[channel] = {};
-  fs.writeFileSync('./playerstats.json', JSON.stringify(resetText));
+  fs.writeFileSync('./playerStats.json', JSON.stringify(resetText));
   bot.say(channel, "Everything has been reset!");
 }
 
+// Battle logic. Handles common cases
 function battle(channel, instigator, opponent) {
   playerStats = JSON.parse(fs.readFileSync('./playerStats.json', 'utf8'));
   if (instigator == opponent) {
@@ -175,7 +181,7 @@ function battle(channel, instigator, opponent) {
       bot.say(channel, "You win, " + instigator);
       randomStat = pickRandomProperty(instigatorStats);
       playerStats[channel][instigator][randomStat]++;
-        fs.writeFileSync('./playerstats.json', JSON.stringify(playerStats));
+      fs.writeFileSync('./playerStats.json', JSON.stringify(playerStats));
     } else if (victoryPoints < 0) {
       bot.say(channel, instigator + " loses");
     } else {
@@ -189,6 +195,7 @@ function battle(channel, instigator, opponent) {
   }
 }
 
+// Check the online users
 function getUsers(url) {
   var xmlHttp = new XMLHttpRequest();
   xmlHttp.open("GET", url, false); // false for synchronous request
@@ -201,6 +208,8 @@ var attributes = [
   "strength", "agility", "intelligence", "stamina", "charisma", "wisdom"
 ];
 
+// Get a user's stats. I admit it would be better served with a
+// list comprehension. In Python: [x for x in list_item]
 function getStats(channel, from) {
   playerStats = JSON.parse(fs.readFileSync('./playerStats.json', 'utf8'));
   if (from in playerStats[channel]) {
@@ -215,6 +224,7 @@ function getStats(channel, from) {
   }
 }
 
+// If a player has no character, generate one
 function generateCharacter(channel, from) {
   playerStats = JSON.parse(fs.readFileSync('./playerStats.json', 'utf8'));
   var remainder = 20;
@@ -230,6 +240,6 @@ function generateCharacter(channel, from) {
     }
     bot.say(channel, "cg, " + from + ", character created!");
     playerStats[channel][from] = currentPlayerStats;
-    fs.writeFileSync('./playerstats.json', JSON.stringify(playerStats));
+    fs.writeFileSync('./playerStats.json', JSON.stringify(playerStats));
   }
 }
