@@ -25,3 +25,14 @@ node bot.js
 ```
 
 **5**: Win
+
+### Commands
+`join` the fight by creating a character
+
+check your `stats`
+
+`battle [username]` to pick a fight with a buddy
+
+see who is `online`
+
+`reset` everything and start over
