@@ -1,0 +1,7 @@
+{
+  "channels": ["#USERNAME"],
+  "botName": "USERNAME",
+  "botNick": ["bot"],
+  "password": "OAUTHPASSWORD",
+  "admins": ["USERNAME"]
+}
