@@ -4,16 +4,10 @@ var irc = require("irc"),
   jf = require("jsonfile"),
   util = require('util'),
   config = require("./config.json"),
-  XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;;;
+  XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 //Get Stored Data
 
 var playerStats = JSON.parse(fs.readFileSync('./playerStats.json', 'utf8'));
-//var savedData = JSON.stringify(fs.writeFileSync('./playerstats.json', '{}'))
-console.log(playerStats);
-var commands = {
-  "battle": "battling",
-  "stats": "statsing",
-}
 
 var settings = {
   channels: config["channels"],
@@ -22,9 +16,9 @@ var settings = {
   botNick: config["botNick"],
   password: config["password"], // can be obtained here: http://www.twitchapps.com/tmi
   admins: config["admins"], //admins that can control the bot
-}
+};
 
-var usersUrl = "http://tmi.twitch.tv/group/user/nano_machina/chatters"
+var usersUrl = "http://tmi.twitch.tv/group/user/nano_machina/chatters";
 
 // add a channel to playerStats obj if not exists
 for (i = 0; i < config.channels.length; i++) {
@@ -64,7 +58,6 @@ bot.addListener("join", function(channel, who) {
     if (!settings[channel.substr(1)].adminMsg) {
       console.log('starting interval for adminMsg');
       settings[channel.substr(1)].adminMsg = setInterval(function() {
-        sendAdminMsg(channel)
       }, 600000);
     }
   }
@@ -120,7 +113,7 @@ function textScan(text, channel, from) {
   var nameCheck = text.toLowerCase().split(" ");
   console.log(nameCheck);
   if (nameCheck[0] == "battle") {
-    battle(channel, from, nameCheck[1])
+    battle(channel, from, nameCheck[1]);
     return;
   } else if (nameCheck[0] == "join") {
     generateCharacter(channel, from);
@@ -130,14 +123,17 @@ function textScan(text, channel, from) {
   } else if (nameCheck[0] == "online") {
     try {
       var users = JSON.parse(getUsers(usersUrl));
-      var userString = ""
+      var userString = "";
       for (i = 0; i < users["chatters"]["viewers"].length; i++) {
-        userString += users["chatters"]["viewers"][i] + " "
+        userString += users["chatters"]["viewers"][i] + " ";
       }
-      bot.say(channel, "Online: " + userString)
+      bot.say(channel, "Online: " + userString);
     } catch (error) {
-      bot.say(channel, "Sorry, twitch's API is taking a nap. Try again!")
+      bot.say(channel, "Sorry, twitch's API is taking a nap. Try again!");
     }
+  } else if (nameCheck[0] == "reset") {
+    reset(channel);
+    return;
   }
 }
 
@@ -150,9 +146,17 @@ function pickRandomProperty(obj) {
   return result;
 }
 
+function reset(channel) {
+  var resetText = {};
+  resetText[channel] = {};
+  fs.writeFileSync('./playerstats.json', JSON.stringify(resetText));
+  bot.say(channel, "Everything has been reset!");
+}
+
 function battle(channel, instigator, opponent) {
+  playerStats = JSON.parse(fs.readFileSync('./playerStats.json', 'utf8'));
   if (instigator == opponent) {
-    bot.say(channel, "You can't battle yourself")
+    bot.say(channel, "You can't battle yourself");
   } else if (instigator in playerStats[channel] && opponent in playerStats[channel]) {
     instigatorStats = playerStats[channel][instigator];
     opponentStats = playerStats[channel][opponent];
@@ -170,12 +174,12 @@ function battle(channel, instigator, opponent) {
     if (victoryPoints > 0) {
       bot.say(channel, "You win, " + instigator);
       randomStat = pickRandomProperty(instigatorStats);
-      playerStats[channel][instigator][randomStat]++
-      fs.writeFileSync('./playerstats.json', JSON.stringify(playerStats));
+      playerStats[channel][instigator][randomStat]++;
+        fs.writeFileSync('./playerstats.json', JSON.stringify(playerStats));
     } else if (victoryPoints < 0) {
-      bot.say(channel, instigator + " loses")
+      bot.say(channel, instigator + " loses");
     } else {
-      bot.say(channel, "Draw")
+      bot.say(channel, "Draw");
     }
   } else if (!(instigator in playerStats[channel])) {
     bot.say(channel, "You don't have a character. Type \"join\".");
@@ -195,9 +199,10 @@ function getUsers(url) {
 // battle logic
 var attributes = [
   "strength", "agility", "intelligence", "stamina", "charisma", "wisdom"
-]
+];
 
 function getStats(channel, from) {
+  playerStats = JSON.parse(fs.readFileSync('./playerStats.json', 'utf8'));
   if (from in playerStats[channel]) {
     var stats = playerStats[channel][from];
     bot.say(channel, "strength: " + stats.strength + ", agility: " +
@@ -206,11 +211,12 @@ function getStats(channel, from) {
       stats.wisdom);
   } else {
     bot.say(channel,
-      "Sorry, but you don't have a character. Make one with \"join\"!")
+      "Sorry, but you don't have a character. Make one with \"join\"!");
   }
 }
 
 function generateCharacter(channel, from) {
+  playerStats = JSON.parse(fs.readFileSync('./playerStats.json', 'utf8'));
   var remainder = 20;
   if (from in playerStats[channel]) {
     bot.say(channel, "sorry, " + from + ", but you've already got a character.");
